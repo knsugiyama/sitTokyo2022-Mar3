@@ -1,28 +1,16 @@
-package my.before.handlers;
+package my.after.handlers;
 
-import cds.gen.booksservice.Books;
-import cds.gen.booksservice.Books_;
-import cds.gen.ordersservice.OrderItems;
-import cds.gen.ordersservice.OrderItems_;
 import cds.gen.ordersservice.Orders;
 import cds.gen.ordersservice.OrdersService_;
 import cds.gen.ordersservice.Orders_;
-import com.sap.cds.ql.Select;
-import com.sap.cds.ql.cqn.CqnSelect;
-import com.sap.cds.services.ErrorStatuses;
-import com.sap.cds.services.ServiceException;
 import com.sap.cds.services.cds.CdsService;
 import com.sap.cds.services.handler.EventHandler;
 import com.sap.cds.services.handler.annotations.After;
 import com.sap.cds.services.handler.annotations.Before;
 import com.sap.cds.services.handler.annotations.ServiceName;
-import com.sap.cds.services.persistence.PersistenceService;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import my.after.boundary.order.read.OrderReadBoundary;
+import my.after.boundary.order.read.OrderReadInputData;
+import my.after.domain.model.order.OrderId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,10 +21,11 @@ public class OrdersServiceHandler implements EventHandler {
 
   private final static Logger logger = LoggerFactory.getLogger(OrdersServiceHandler.class);
 
-  private final PersistenceService db;
+  private final OrderReadBoundary orderReadBoundary;
 
-  public OrdersServiceHandler(PersistenceService db) {
-    this.db = db;
+  public OrdersServiceHandler(
+      OrderReadBoundary orderReadBoundary) {
+    this.orderReadBoundary = orderReadBoundary;
   }
 
   /**
@@ -46,17 +35,10 @@ public class OrdersServiceHandler implements EventHandler {
    */
   @After(event = CdsService.EVENT_READ, entity = Orders_.CDS_NAME)
   public void readOrders(Orders orders) {
-    // 処理対象の注文情報を取得する
-    CqnSelect query = Select.from(OrderItems_.class)
-        .where(oi -> oi.parent_ID().eq(orders.getId()));
-    List<OrderItems> orderItems = db.run(query).listOf(OrderItems.class);
-
-    // 合計金額を算出する
-    BigDecimal total = orderItems.stream()
-        .map(oi -> oi.getAmount().multiply(new BigDecimal(oi.getQuantity())))
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-    orders.setTotal(total);
+    OrderReadInputData inputData =
+        new OrderReadInputData(new OrderId(orders.getId()));
+    orders.setTotal(
+        orderReadBoundary.calcTotal(inputData).getTotal().value());
   }
 
   /**
@@ -66,7 +48,7 @@ public class OrdersServiceHandler implements EventHandler {
    */
   @Before(event = CdsService.EVENT_CREATE, entity = Orders_.CDS_NAME)
   public void addOrders(Orders orders) {
-    if (Objects.isNull(orders.getItems()) || orders.isEmpty()) {
+/*    if (Objects.isNull(orders.getItems()) || orders.isEmpty()) {
       throw new ServiceException(ErrorStatuses.NOT_FOUND, "明細がありません。");
     }
 
@@ -87,7 +69,7 @@ public class OrdersServiceHandler implements EventHandler {
       if (books.getStock() < orderBooks.get(books.getId()).intValue()) {
         throw new ServiceException(ErrorStatuses.BAD_REQUEST, "在庫数を超過しています。");
       }
-    }
+    }*/
 
   }
 }
