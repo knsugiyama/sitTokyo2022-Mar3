@@ -15,11 +15,11 @@ import my.after.domain.repository.OrderItemRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class OrderItemItemDataAccess implements OrderItemRepository {
+public class OrderItemDataAccess implements OrderItemRepository {
 
   private final PersistenceService db;
 
-  public OrderItemItemDataAccess(PersistenceService db) {
+  public OrderItemDataAccess(PersistenceService db) {
     this.db = db;
   }
 
